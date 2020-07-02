@@ -1,0 +1,171 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[left=1.2cm, right=1.5cm, top=1.6cm, bottom=1.3cm]{geometry}
+\usepackage{xeCJK}
+\usepackage{indentfirst}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{fancyhdr}
+% \usepackage[compact]{titlesec}
+\usepackage[usenames,dvipsnames]{xcolor}
+
+\setCJKmainfont{NotoSansCJKtc-Thin}
+\setmonofont{Consolas}
+
+\definecolor{CodeGreen}{rgb}{0,0.6,0}
+\definecolor{CodeGray}{rgb}{0.5,0.5,0.5}
+\definecolor{CodeMauve}{rgb}{0.58,0,0.82}
+\lstset{
+    basicstyle = \ttfamily\footnotesize, 
+    breakatwhitespace = false,
+    breaklines = true,         
+    commentstyle = \color{CodeGreen}\bfseries,
+    extendedchars = false,
+    keepspaces=true,
+    keywordstyle=\color{blue}\bfseries, % keyword style
+    language = C++,                     % the language of code
+    otherkeywords={string},
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{CodeGray},
+    rulecolor=\color{black},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stepnumber=1,       
+    stringstyle=\color{CodeMauve},        % string literal style
+    tabsize=2,
+}
+% from https://blog.csdn.net/RobertChenGuangzhi/article/details/45126785
+
+\title{Machine Learning 2020 - Homework 15 Report}
+\author{學號：b08902100, 系級：資工一, 姓名：江昱勳}
+\date{}
+
+\begin{document}
+\pagestyle{fancy}
+\fancyhead[L]{Machine Learning 2020 - Homework 15}
+\fancyhead[R]{Author: b08902100 江昱勳}
+
+\maketitle
+
+% \verbatiminput{HW2_S.txt}
+% \lstinputlisting{HW2.cpp}
+
+\begin{enumerate}
+    \item Policy Gradient 方法
+    \begin{enumerate}
+        \item 請閱讀及跑過範例程式，並試著改進 reward 計算的方式。
+        \item 請說明你如何改進 reward 的算法，而不同的算法又如何影響訓練結果？
+        
+        這裡我採用了discounted reward的方式改進reward的算法，並且每搜集64個episode的資料後，才去更新Actor，這裡discount的衰減率我設成0.9，最後total reward為131.4621654997108，final reward為0.5483643130777409。
+
+        而原本沒有改進reward的方法total reward約為$-54.67351046366531$
+    \end{enumerate}
+    \item 試著修改與比較至少三項超參數（神經網路大小、一個 batch 中的回合數等），並說明你觀察到什麼。
+    
+    原始網路模型: 第一層線性層$8 \times 16$並使用$\tanh$作為活化函數、第二層線性層$16 \times 16$並使用$\tanh$作為活化函數，最後一層線性層$16 \times 4$並使用softmax作為活化函數，使其作為機率輸出。
+
+    修改後的網路模型: 第一層線性層$8 \times 32$並使用$\tanh$作為活化函數、第二層線性層$32 \times 32$並使用$\tanh$作為活化函數，第四層線性層$32 \times 16$並使用relu作為活化函數，最後一層線性層$16 \times 4$並使用softmax作為活化函數，使其作為機率輸出。
+
+    嘗試將網路從後發現model會變得更加的不穩定，從圖\ref{fig:pg_big}可以看到train了300個epoch後model還非常的浮動，到500 epoch後有稍微穩定一些，不過整體表現還是不好，推測是反而較不容易學到正確的知識，或許每次的episode要再加大一些。
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/discount_big.png}
+        \caption{Policy Gradient with larger model}
+        \label{fig:pg_big}
+    \end{figure}
+
+    當初會採用0.9作為衰減率的原因是因為使用random agent玩了1000次後的平均episode長度為91.38，第一個epoch到最後一個epoch的差距為$0.9^{91.38}\approx 0.00006586892$，而每10\%左右的差距為$0.9^{9} \approx 0.387420489$，我自己估計這樣的結果是可以的。
+
+    從圖\ref{fig:pg8}可以看到，實際上採用0.8作為衰減率訓練total reward約為-211左右，而final reward約為-100，可以發現結果也不盡理想，推測我們還是會希望採用更遠一點的操作，因為一次的失誤可能會需要很長一段時間的修正。
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/rate8.png}
+        \caption{Policy Gradient with discount factor 0.8}
+        \label{fig:pg8}
+    \end{figure}
+
+    若訓練時每個epoch只採用8個episode時，模型在訓練時會變得較不穩定，可以從圖\ref{fig:ep8}看到，起伏非常的大，最後的結果也不好，total reward為-214.28588577033656，final reward為-100。並且從圖\ref{fig:res_ep8}也可以看到結果非常的差，直接翻車了。
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/ep8.png}
+        \caption{Policy Gradient with 8 episode each batch}
+        \label{fig:ep8}
+    \end{figure}
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/result_ep8.png}
+        \caption{Policy Gradient with 8 episode each batch}
+        \label{fig:res_ep8}
+    \end{figure}
+
+    \item Actor-Critic 方法
+    \begin{enumerate}
+        \item 請同學們從 REINFORCE with baseline、Q Actor-Critic、A2C 等眾多方法中擇一實作。
+        
+        嘗試使用A2C的方式訓練模型遊玩此遊戲，每次抽取128次的episode拿來更新，訓練300 epoch，訓練的時候每次都同時用同一組episode的資料去更新actor跟critic，同時衰減率與前面相同我設成0.9，最後total reward為-165.2634328122486，final reward為-100。
+
+        \begin{figure}[ht]
+            \centering
+            \includegraphics[width=.45\textwidth]{images/a2c.png}
+            \caption{A2C}
+            \label{fig:a2c}
+        \end{figure}
+
+        \item 請說明你的實做與前者（Policy Gradient）的差異。
+        
+        可以看到這次模型的結果不盡理想，推測是因為我同時訓練actor跟critic，在actor還沒學好的時候critic學到的內容自然也不盡正確，而policy gradient在這個遊戲上可能沒那麼困難，所以加入discount後就可以獲得不錯的結果。
+
+        此外我也有嘗試先訓練actor 100epoch後再訓練critic 100epoch，再一同訓練actor + critic效果也不太好，甚至比原先效果更差，這部分我推測也有可能是因為在訓練critic的時候使用的資料主要仍是採用critic自己生成出來的部分，而不是來自環境，所以應該改善這部分。
+
+        \begin{figure}[ht]
+            \centering
+            \includegraphics[width=.45\textwidth]{images/a2c2.png}
+            \caption{Different training of A2C}
+            \label{fig:a2c2}
+        \end{figure}
+
+    \end{enumerate}
+    \item 具體比較（數據、作圖）以上幾種方法有何差異，也請說明其各自的優缺點為何。
+    
+    從圖\ref{fig:res_pg}可以看到，其實原先只採用policy gradient的方法在落地的時候就有不錯的表現了，不過其遊玩過程仍不太好；而改用0.9的衰減率後可以從圖\ref{fig:pg9}看到訓練過程大幅的提升，而結果也很不錯(圖\ref{fig:res_best})。其他方法我則幾乎沒有看到太多好的表現。最讓我訝異的部分是A2C的部分意外的差，完全找不出任何優點。
+    
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/pg.png}
+        \caption{Policy Gradient}
+        \label{fig:pg}
+    \end{figure}
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/result_pg.png}
+        \caption{Policy Gradient}
+        \label{fig:res_pg}
+    \end{figure}
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.45\textwidth]{images/best.png}
+        \caption{Policy Gradient with discount factor 0.9}
+        \label{fig:pg9}
+    \end{figure}
+
+    \begin{figure}[ht]
+        \centering
+        \includegraphics[width=.5\textwidth]{images/result_best.png}
+        \caption{Policy Gradient with discount factor 0.9}
+        \label{fig:res_best}
+    \end{figure}
+
+\end{enumerate}
+
+\end{document}
